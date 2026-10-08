@@ -1,0 +1,106 @@
+// Exercise client input and reconnect flows without a browser or a running server.
+import vm from 'node:vm';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { C, MAPS, WEAPONS, weaponPads, updateBoost, BOOST_PADS, objectRect, move, tryDash } from '../shared/game.js';
+const html = fs.readFileSync('client/index.html', 'utf8');
+const elements = new Map();
+const handlers = {};
+const memory = new Map();
+const document = {
+  activeElement: null, hidden: false,
+  body: {classList:{toggle(){}}},
+  getElementById(id) { assert.ok(elements.has(id), `element ${id} exists`); return elements.get(id); },
+  querySelectorAll() { return [...elements.values()].filter(e => ['menu','lobby'].includes(e.id)); },
+  addEventListener(type, fn) { handlers[type] = fn; },
+};
+for (const [, id] of html.matchAll(/id="([^"]+)"/g)) elements.set(id, {
+  id, value:'', style:{}, hidden:false, disabled:false, checked:false, textContent:'', innerHTML:'',
+  classList:{add(){},remove(){}}, events:{}, clientWidth:800,clientHeight:500,
+  addEventListener(type,fn){this.events[type]=fn;}, setPointerCapture(){},
+  focus(){document.activeElement=this;},getContext(){return new Proxy({}, {get:(obj,key)=>obj[key] || (()=>{}),set:(obj,key,v)=>(obj[key]=v,true)});},querySelectorAll(){return [];},
+  attrs:{},getAttribute(k){return this.attrs[k];},setAttribute(k,v){this.attrs[k]=v;},
+});
+const sockets=[];
+class Socket {
+  constructor(){this.readyState=1;this.messages=[];sockets.push(this);}
+  send(raw){this.messages.push(JSON.parse(raw));}
+  close(){this.readyState=3;this.onclose?.();}
+  receive(m){this.onmessage({data:JSON.stringify(m)});}
+}
+const storage={getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,String(v))};
+const context=vm.createContext({C,MAPS,WEAPONS,weaponPads,updateBoost,BOOST_PADS,objectRect,move,tryDash,document,console,URL,URLSearchParams,
+  navigator:{clipboard:{async writeText(text){memory.set('clipboard',text);}}},
+  window:{CFG:{}}, location:{protocol:'http:',host:'localhost',href:'http://localhost/?room=TEST',search:'?room=TEST'},
+  sessionStorage:storage,localStorage:storage, WebSocket:Socket,
+  matchMedia:()=>({matches:false}),performance:{now:()=>1000},
+  setTimeout:()=>1,clearTimeout(){},requestAnimationFrame(){},
+  ResizeObserver:class{observe(){}},AbortController,
+  innerWidth:800,innerHeight:500,devicePixelRatio:1,
+  addEventListener(type,fn){handlers[type]=fn;},
+});
+vm.runInContext(fs.readFileSync('client/main.js','utf8').replace(/^import .*\n/,''),context);
+const $=id=>elements.get(id);
+assert.equal($('cdi').value,'TEST','invitation fills room code');
+assert.equal($('friends-panel').hidden,false);
+$('nm').value='Tester';$('practice').onclick();
+let ws=sockets.at(-1);ws.onopen();
+assert.equal(ws.messages[0].room,'new');
+ws.receive({t:'welcome',id:1,code:'TEST',tok:'token'});
+assert.equal(ws.messages.filter(m=>m.t==='bot').length,2);
+assert.ok(ws.messages.some(m=>m.t==='start'));
+assert.equal(memory.get('room'),'TEST');
+await $('share-room').onclick();
+assert.equal(memory.get('clipboard'),'http://localhost/?room=TEST','share fallback copies invitation');
+ws.receive({t:'room',ph:'count',code:'TEST',host:1,ps:[{id:1,n:'Tester',on:true}]});
+ws.receive({t:'room',ph:'lobby',code:'TEST',host:1,settings:{map:'pillars',minutes:5,target:20},ps:[{id:1,n:'Tester',on:true}]});
+assert.equal($('map-choice').value,'pillars');
+assert.equal($('map-choice').disabled,false);
+$('kill-target').value='5';$('kill-target').onchange();
+assert.equal(ws.messages.at(-1).target,5);
+ws.receive({t:'room',ph:'count',code:'TEST',host:2,settings:{map:'pillars',minutes:5,target:20},ps:[{id:1,n:'Tester',on:true}]});
+assert.equal($('map-choice').disabled,true,'guest cannot change settings');
+ws.receive({t:'s',ph:'play',left:180000,p:[[1,450,280,0,100,1,0,0,0,0,0]],b:[],supplies:[]});
+ws.receive({t:'fx',x:500,y:280,kid:1,v:2,damage:25,a:0});
+assert.equal(vm.runInContext('hitLabels[0].damage',context),25,'server hit produces damage feedback');
+vm.runInContext('draw(1000)',context);
+assert.equal($('game').style.display,'block');
+for (const weapon of ['shotgun', 'rapid', 'cannon']) {
+  vm.runInContext(`ents.get(1).weapon='${weapon}'; hudT=0; hud(1000)`, context);
+  assert.equal($('weapon-symbol').getAttribute('href'), '/icons.svg#'+weapon, 'HUD icon follows weapon pickup');
+  assert.equal($('weapon-hud').getAttribute('aria-label'), WEAPONS[weapon].name, 'weapon remains accessible');
+}
+
+const pointer={pointerType:'touch',pointerId:1,offsetX:600,offsetY:300};
+$('cv').events.pointerdown(pointer);
+assert.equal(vm.runInContext('readInput().f',context),false,'touch aim dead zone does not fire');
+$('cv').events.pointermove({...pointer,offsetX:630});
+assert.equal(vm.runInContext('readInput().f',context),true,'dragging aim fires');
+handlers.blur();
+assert.equal(vm.runInContext('readInput().f',context),false,'blur resets touch controls');
+$('separate-fire').checked=true;$('separate-fire').onchange();
+$('cv').events.pointerdown(pointer);
+$('cv').events.pointermove({...pointer,offsetX:630});
+assert.equal(vm.runInContext('readInput().f',context),false,'separate fire mode aims without firing');
+$('fire').events.pointerdown({preventDefault(){},pointerId:2});
+assert.equal(vm.runInContext('readInput().f',context),true,'fire button shoots');
+$('fire').events.pointercancel();
+assert.equal(vm.runInContext('readInput().f',context),false,'cancel releases fire');
+$('boost').events.pointerdown({preventDefault(){},pointerId:3});
+assert.equal(vm.runInContext('readInput().boost',context),true);
+handlers.blur();assert.equal(vm.runInContext('readInput().boost',context),false,'blur resets boost');
+$('score-toggle').onclick();assert.equal($('score-toggle').getAttribute('aria-expanded'),'true');
+$('volume').value='25';$('graphics').value='low';$('vibration').checked=true;$('volume').onchange();
+assert.equal(JSON.parse(memory.get('ac_controls')).volume,25,'device settings saved');
+$('rejoin').onclick();ws=sockets.at(-1);ws.onopen();
+assert.equal(ws.messages[0].tok,'token');
+assert.equal(ws.messages[0].room,'TEST');
+ws.receive({t:'welcome',id:1,code:'TEST',tok:'token'});
+ws.receive({t:'room',ph:'play',code:'TEST',host:1,ps:[{id:1,n:'Tester',on:true}]});
+ws.receive({t:'s',ph:'play',left:150000,p:[[1,450,280,0,100,1,0,0,0,0,0]],b:[],supplies:[]});
+assert.equal($('game').style.display,'block','rejoin during play displays arena');
+ws.receive({t:'room',ph:'end',code:'TEST',host:1,settings:{map:'neon',mode:'2v2'},teamWinner:0,ps:[{id:1,n:'Tester',on:true,r:false}],res:[{id:1,n:'Tester',k:2,d:1}]});
+assert.equal($('et').textContent,'Blue team wins!');
+$('ag').onclick();assert.equal(ws.messages.at(-1).t,'rematch');assert.equal(ws.messages.at(-1).v,true);
+$('ql').onclick();assert.equal(memory.get('room'),'');
+console.log('PASS client practice setup, touch dead zone, input reset, rejoin and leave');

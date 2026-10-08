@@ -1,0 +1,16 @@
+{
+  "name": "arena-clash",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node scripts/build-vercel.mjs",
+    "test:deploy": "node test/deploy.js",
+    "start": "node server/index.js",
+    "start:env": "node --env-file=.env server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node test/supplies.js && node test/controls.js && node test/maps.js && node test/weapons.js && node test/features.js && node test/client.js && node test/sim.js"
+  },
+  "dependencies": { "ws": "^8.18.0" }
+}

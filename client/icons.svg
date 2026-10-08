@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg"><symbol id="cannon" viewBox="0 0 24 24"><path d="M3 9h13v5H3zM16 10h5v3h-5M6 14v5h5l2-5M5 6h6v3"/></symbol>
+<symbol id="shotgun" viewBox="0 0 24 24"><path d="M2 9h19v3H8l-3 6H2l3-6M10 12v3h6v-3M4 6h17"/></symbol>
+<symbol id="rapid" viewBox="0 0 24 24"><path d="M3 8h15v5H3zM18 9h4v3h-4M5 13l-2 6h4l3-6M12 13v6h5v-6M7 5h6v3"/></symbol>
+<symbol id="dash" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7M15 5l7 7-7 7M2 8h4M1 12h5M2 16h4"/></symbol>
+<symbol id="boost" viewBox="0 0 24 24"><path d="m14 2-10 12h7l-1 8 10-12h-7z"/></symbol>
+<symbol id="reload" viewBox="0 0 24 24"><path d="M20 8a9 9 0 1 0 1 8M20 3v5h-5"/></symbol>
+<symbol id="fire" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
+<symbol id="pause" viewBox="0 0 24 24"><path d="M7 4h3v16H7zM14 4h3v16h-3z"/></symbol>
+<symbol id="scores" viewBox="0 0 24 24"><path d="M8 3h8v5a4 4 0 0 1-8 0zM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 12v6M8 21h8M9 18h6v3"/></symbol>
+<symbol id="armor" viewBox="0 0 24 24"><path d="m12 2 8 3v6c0 5-8 11-8 11S4 16 4 11V5z"/></symbol></svg>
