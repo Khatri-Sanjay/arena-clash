@@ -104,3 +104,39 @@ assert.equal($('et').textContent,'Blue team wins!');
 $('ag').onclick();assert.equal(ws.messages.at(-1).t,'rematch');assert.equal(ws.messages.at(-1).v,true);
 $('ql').onclick();assert.equal(memory.get('room'),'');
 console.log('PASS client practice setup, touch dead zone, input reset, rejoin and leave');
+
+// Thumb zones must remain inside the screen even with large joystick preferences.
+for (const [width, height] of [[320,568],[360,640],[390,844],[430,932],[568,320],[844,390],[768,1024]]) {
+  $('cv').clientWidth=width; $('cv').clientHeight=height;
+  vm.runInContext('prefs.size=90; resize(); safeInsets={left:20,right:20,top:24,bottom:34}',context);
+  const radius=vm.runInContext('stickSize()',context);
+  for (const [x,y] of [[0,0],[width,height],[width*.2,height-90],[width*.8,height-90]]) {
+    const origin=vm.runInContext(`stickOrigin(${x},${y})`,context);
+    assert.ok(origin.x-radius>=20 && origin.x+radius<=width-20, `${width}x${height}: horizontal joystick bounds`);
+    assert.ok(origin.y-radius>=24 && origin.y+radius<=height-34, `${width}x${height}: vertical joystick bounds`);
+  }
+  vm.runInContext('sticks.L={x:1,y:1,ox:0,oy:0}; resize()',context);
+  assert.equal(vm.runInContext('sticks.L',context),null,'viewport changes release movement');
+}
+console.log('PASS responsive joystick bounds and rotation input reset across seven viewport sizes');
+
+vm.runInContext("teaching=true; lastPh='play'; noticeText='CANNON EQUIPPED'; noticeUntil=2000; hudT=0; hud(1000)",context);
+assert.equal($('tutorial-tip').hidden,true,'pickup notices temporarily replace tutorial tips');
+$('ban').style.display='block';
+vm.runInContext('hudT=0; hud(1000)',context);
+assert.equal($('notice').textContent,'','connection warning takes priority over pickup notices');
+assert.equal($('tutorial-tip').hidden,true);
+$('ban').style.display='none';
+vm.runInContext('noticeUntil=0; hudT=0; hud(1000)',context);
+assert.equal($('tutorial-tip').hidden,false,'tutorial returns once other messages clear');
+$('dismiss-tip').onclick();
+assert.equal(vm.runInContext('teaching',context),false,'tutorial can be dismissed');
+assert.equal($('tutorial-tip').hidden,true);
+$('score-toggle').onclick();
+$('cv').events.pointerdown({...pointer,pointerId:8});
+assert.equal($('score-toggle').getAttribute('aria-expanded'),'false','touching arena closes scores');
+vm.runInContext('setPause(true)',context);
+assert.equal($('ps').style.display,'flex');
+vm.runInContext('setPause(false)',context);
+assert.equal($('ps').style.display,'none');
+console.log('PASS popup priority, dismissible tutorial, scoreboard dismissal and pause resume');

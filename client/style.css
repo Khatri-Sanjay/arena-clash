@@ -1324,3 +1324,148 @@ body.touch #score-toggle { display: grid; }
 #boost-meter > .ui-icon { width: 16px; height: 16px; }
 #reload-status:empty, #dash-status:empty { display: none; }
 body.touch #dash .ui-icon, body.touch #boost .ui-icon { width: 26px; height: 26px; }
+
+/* Responsive touch layout: reserve two thumb zones below the action row. */
+#game { height:100dvh; }
+.screen { overflow-x:hidden; }
+.wrap, .card, .settings-grid > label { min-width:0; }
+input, select { font-size:16px; }
+.pl { flex-wrap:wrap; overflow-wrap:anywhere; }
+.ov { z-index:20; }
+body.touch {
+  --action-size:44px;
+  --action-gap:6px;
+  --action-bottom:calc(172px + var(--sb));
+}
+body.touch #hp, body.touch #weapon-hud {
+  top:calc(68px + var(--st));
+  width:min(155px,calc((100% - var(--sl) - var(--sr) - 36px) / 2));
+  padding:8px;
+  font-size:10px;
+}
+body.touch #hp { left:calc(12px + var(--sl)); right:auto; }
+body.touch #weapon-hud {
+  left:auto;
+  right:calc(12px + var(--sr));
+  transform:none;
+}
+body.touch #hp .dash-meter, body.touch #weapon-hud .dash-meter { margin:6px 0 3px; }
+body.touch #feed { display:none; }
+body.touch #personal-score { top:calc(48px + var(--st)); white-space:nowrap; }
+body.touch #connection { top:calc(140px + var(--st)); font-size:9px; }
+body.touch #lesson { top:calc(158px + var(--st)); padding:8px 12px; width:min(400px,90%); }
+body.touch #notice { top:calc(190px + var(--st)); width:80%; font-size:12px; }
+body.touch #ban { top:calc(48px + var(--st)); }
+body.touch #boost-meter { bottom:calc(8px + var(--sb)); width:90px; }
+body.touch #rot { display:none; }
+body.touch #sb { max-width:min(280px,75vw); max-height:calc(100dvh - 80px - var(--st) - var(--sb)); overflow:auto; }
+body.touch #dash, body.touch #reload, body.touch #boost, body.touch #fire { z-index:2; }
+@media (max-width:380px) {
+  .home h1 { font-size:clamp(32px,10vw,38px); letter-spacing:-1.5px; }
+  .home .brand { flex-wrap:wrap; margin-bottom:20px; }
+  .home-actions { gap:8px; }
+  .home-actions button { padding:12px; }
+  .invite-actions, .bot-actions { flex-wrap:wrap; }
+  .invite-actions button, .bot-actions button { flex-basis:120px; }
+}
+@media (orientation:landscape) and (max-height:500px) {
+  .screen { padding-top:max(12px,var(--st)); padding-bottom:max(12px,var(--sb)); }
+  #lobby .wrap { padding-top:0; }
+  .home .brand { margin-bottom:12px; }
+  .home h1 { font-size:36px; margin:12px 0; }
+  .home .card, #lobby .card { margin:12px 0; padding:16px; }
+  body.touch { --action-bottom:calc(144px + var(--sb)); }
+  body.touch #hp, body.touch.left-handed #hp {
+    top:calc(8px + var(--st)); left:calc(70px + var(--sl)); right:auto;
+    width:125px;
+  }
+  body.touch #weapon-hud { top:calc(8px + var(--st)); right:calc(70px + var(--sr)); width:125px; }
+  body.touch #connection { top:calc(50px + var(--st)); }
+  body.touch #personal-score { top:calc(66px + var(--st)); }
+  body.touch #lesson { top:calc(84px + var(--st)); max-width:40vw; font-size:10px; }
+  body.touch #notice { top:calc(115px + var(--st)); width:40%; }
+  body.touch #boost-meter { bottom:calc(8px + var(--sb)); }
+}
+#game { padding:var(--st) var(--sr) var(--sb) var(--sl); }
+
+/* Keep popups in a single flow instead of stacking them over the arena. */
+#tutorial-tip { display:contents; }
+#dismiss-tip { display:none; }
+.pause-settings { margin:12px 0; }
+.pause-settings summary { cursor:pointer; min-height:44px; padding:12px 0; color:var(--mut); }
+.ov { overflow:hidden; }
+.ov .card {
+  max-height:100%;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+}
+#ps #rs { position:sticky; top:0; z-index:1; box-shadow:0 4px 12px #0005; }
+body.touch #mobile-messages {
+  position:absolute;
+  top:calc(146px + var(--st));
+  left:calc(12px + var(--sl));
+  right:calc(12px + var(--sr));
+  display:grid;
+  gap:4px;
+  pointer-events:none;
+  z-index:3;
+}
+body.touch #mobile-messages #ban,
+body.touch #mobile-messages #notice,
+body.touch #mobile-messages #lesson {
+  position:static;
+  transform:none;
+  width:auto;
+  max-width:none;
+  margin:0;
+  padding:6px 10px;
+  font-size:11px;
+  line-height:1.3;
+  border-radius:8px;
+  overflow-wrap:anywhere;
+  text-align:center;
+}
+body.touch #mobile-messages #notice { background:#0b1425dd; }
+#notice:empty { display:none; }
+body.touch #tutorial-tip { display:flex; align-items:center; background:#0b1425dd; border-radius:8px; }
+body.touch #mobile-messages #lesson { flex:1; min-width:0; background:none; border:0; }
+body.touch #dismiss-tip {
+  display:block;
+  flex:none;
+  width:44px;
+  min-height:44px;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  font-size:24px;
+  pointer-events:auto;
+  touch-action:manipulation;
+}
+body.touch #connection { top:calc(128px + var(--st)); }
+body.touch #sb { z-index:6; touch-action:pan-y; overscroll-behavior:contain; }
+body.touch #score-toggle, body.touch #pb { z-index:7; }
+body.game-paused #mobile-messages, body.game-paused #sb { visibility:hidden; }
+@media (orientation:landscape) and (max-height:500px) {
+  body.touch #mobile-messages {
+    top:calc(88px + var(--st));
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    width:clamp(180px,36vw,360px);
+  }
+  body.touch #connection { top:calc(50px + var(--st)); }
+  .ov { padding: max(8px,var(--st)) max(12px,var(--sr)) max(8px,var(--sb)) max(12px,var(--sl)); }
+  .ov .card { padding:12px 16px; }
+  .ov .card h1 { font-size:28px; margin:0 0 8px; }
+}
+@media (orientation:landscape) and (max-width:620px) {
+  body.touch #hp, body.touch.left-handed #hp { width:90px; left:calc(62px + var(--sl)); }
+  body.touch #weapon-hud { width:90px; right:calc(62px + var(--sr)); }
+  body.touch #ammo-count { font-size:10px; }
+  body.touch .weapon-heading .ui-icon { width:22px; }
+  body.touch #health-value { font-size:9px; }
+  body.touch #hp .health-label { gap:3px; }
+}
