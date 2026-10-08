@@ -110,12 +110,12 @@ The host can select Neon Yard (balanced cover), Crossfire (long lanes), or React
 
 The selected map controls rendering, prediction, bot movement, server collision and supply placement. Combat feedback includes an aim crosshair, server-confirmed hit marker and damage numbers, incoming-fire direction and personal kill progress. `npm test` includes map geometry, rule validation, collision and feedback checks.
 
-## Friends, touch controls and weapons
+## Friends, touch controls and tank upgrades
 The home screen has Play with friends, Practice and Learn. In a lobby choose Invite friends to share a link (or copy it when sharing is unavailable). Invitation links fill the room code; joining still requires a nickname and an available room. For devices on the same Wi-Fi, open the game using the server computer LAN IP before sharing; localhost links only work on the computer running the server.
 
 Mobile controls show resting joystick circles and move to your thumb when touched. The aim stick has a dead zone; optional separate fire and left-handed settings remain available in Pause.
 
-Cannon (C): balanced shots, 10-round magazine. Shotgun (S): five short-range pellets per shell, 5-shell magazine. Rapid fire (R): fast, weaker shots, 24-round magazine. Collect labeled pads to equip a weapon; pads return after 15 seconds. Empty magazines reload automatically. Press R or tap RELOAD for a partial-magazine reload. Respawning restores the cannon. Weapon state, damage and reload timing are enforced by the server.
+Main Cannon (C): balanced 25-damage shells, 10-shot magazine. Heavy Cannon (H): one 45-damage shell every 850 ms, 5-shot magazine. Twin Cannon (T): two parallel 16-damage shells every 420 ms, 8-salvo magazine (one charge per two-shell salvo). Collect labeled upgrade pads; pads return after 15 seconds. Empty magazines reload automatically. Press R or tap Reload for a partial-magazine reload. Respawning restores the Main Cannon. Cannon state, damage and reload timing are enforced by the server. Tracks face the direction of movement while the turret aims independently; the fitted upgrade changes the tank barrel and projectile visuals.
 
 ## Team play and interactive arenas
 Choose free-for-all, 2 vs 2 (four participants) or 4 vs 4 (eight participants) in Match setup. Bots count toward team size. Teams are assigned evenly; blue and orange tanks share a team score. Friendly fire is disabled, including teammate barrel damage.

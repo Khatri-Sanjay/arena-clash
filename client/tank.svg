@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220" role="img" aria-label="Neon green tank with armored tracks and a cannon turret">
+  <defs><linearGradient id="armor" x2=".8" y2="1"><stop stop-color="#b9ffcf"/><stop offset="1" stop-color="#40b981"/></linearGradient><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>
+  <ellipse cx="150" cy="176" rx="104" ry="19" fill="#8aeeab" opacity=".12"/>
+  <g transform="translate(150 110) rotate(-28)" stroke-linejoin="round">
+    <path d="M-72-53H53L73-37V-21H-72L-84-37ZM-72 21H73V37L53 53H-72L-84 37Z" fill="none" stroke="#6affad" stroke-width="12" filter="url(#glow)"/>
+    <path d="M-72-53H53L73-37V-21H-72L-84-37ZM-72 21H73V37L53 53H-72L-84 37Z" fill="#123938" stroke="#8affba" stroke-width="4"/>
+    <g stroke="#63bf9c" stroke-width="5"><path d="M-65-46V-28M-48-46V-28M-31-46V-28M-14-46V-28M3-46V-28M20-46V-28M37-46V-28M-65 28V46M-48 28V46M-31 28V46M-14 28V46M3 28V46M20 28V46M37 28V46"/></g>
+    <path d="M-65-30H43L66-16V16L43 30H-65L-74 17V-17Z" fill="url(#armor)" stroke="#d9ffe5" stroke-width="4"/>
+    <path d="M-62-21H-31V21H-62Z" fill="#123b3b" stroke="#5ddda0" stroke-width="2"/>
+    <g stroke="#8cddb1" stroke-width="3"><path d="M-55-14V14M-48-14V14M-41-14V14"/></g>
+    <path d="M15-8H110V8H15Z" fill="#57ce91" stroke="#e3ffeb" stroke-width="4"/>
+    <path d="M96-12H117V12H96Z" fill="#123b3b" stroke="#9cffc2" stroke-width="3"/>
+    <path d="M-29-21 7-27 29-13V13L7 27-29 21Z" fill="url(#armor)" stroke="#e3ffeb" stroke-width="4"/>
+    <path d="M-17-11H6L16 0 6 11H-17Z" fill="#20504a" stroke="#7effb5" stroke-width="3"/>
+    <path d="M43-25H55V-16H43ZM43 16H55V25H43Z" fill="#effff4"/>
+  </g>
+</svg>

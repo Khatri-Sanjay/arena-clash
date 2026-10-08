@@ -175,7 +175,8 @@ export class Room {
         p.fA=t+weapon.cooldown;p.ammo--;
         for(let i=0;i<weapon.pellets;i++){
           const a=p.a+(i-(weapon.pellets-1)/2)*weapon.spread;
-          this.bs.push({id:this.nb++,o:p.id,x:p.x+Math.cos(a)*(C.R+4),y:p.y+Math.sin(a)*(C.R+4),a,l:weapon.life,speed:weapon.speed,damage:weapon.damage,weapon:p.weapon || 'cannon'});
+          const offset=(i-(weapon.pellets-1)/2)*(weapon.barrelSpacing || 0);
+          this.bs.push({id:this.nb++,o:p.id,x:p.x+Math.cos(a)*(C.R+12)-Math.sin(a)*offset,y:p.y+Math.sin(a)*(C.R+12)+Math.cos(a)*offset,a,l:weapon.life,speed:weapon.speed,damage:weapon.damage,weapon:p.weapon || 'cannon'});
         }
         if(!p.ammo)this.reload(p,t);
       }
@@ -217,7 +218,7 @@ export class Room {
   snap(t) {
     this.all({ t: 's', ph: this.ph, left: Math.max(0, this.endTs - t), map: this.settings.map, scores:this.teamScores(), objects:this.objects.map(o=>[o.id,o.type,o.x,o.y,o.hp]), weapons: this.weapons.map(w=>[w.x,w.y,w.type,Math.max(0,w.readyAt-t)]), supplies: this.supplies.map(s => [s.x,s.y,Math.max(0,s.readyAt-t)]),
       p: [...this.ps.values()].map(p => [p.id, Math.round(p.x), Math.round(p.y), Math.round(p.a * 100) / 100, p.hp, p.al ? 1 : 0, p.k, p.d, t < p.sh ? 1 : 0, Math.max(0,p.rs-t), Math.max(0,p.dC-t),p.weapon || 'cannon',p.ammo,Math.max(0,(p.reloadAt || 0)-t),p.team ?? 0,Math.round(p.energy ?? 100),p.boost?1:0,Math.max(0,p.dU-t),p.boostLocked?1:0]),
-      b: this.bs.map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.a * 100) / 100,b.weapon || 'cannon']) });
+      b: this.bs.map(b => [b.id, Math.round(b.x), Math.round(b.y), Math.round(b.a * 100) / 100,b.weapon || 'cannon',b.o]) });
   }
   finish() {
     this.ph = 'end'; this.bs = [];

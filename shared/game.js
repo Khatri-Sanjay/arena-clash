@@ -43,11 +43,11 @@ export const MAPS = {
 };
 
 export const WEAPONS = {
-  cannon: {name:'Cannon',label:'C',damage:25,pellets:1,spread:0,cooldown:260,speed:740,life:1.1,magazine:10,reload:1100,color:'#ffe066'},
-  shotgun: {name:'Shotgun',label:'S',damage:12,pellets:5,spread:.12,cooldown:650,speed:650,life:.38,magazine:5,reload:1500,color:'#ff986b'},
-  rapid: {name:'Rapid fire',label:'R',damage:10,pellets:1,spread:0,cooldown:100,speed:820,life:.85,magazine:24,reload:1400,color:'#6bdcff'},
+  cannon: {name:'Main Cannon',label:'C',damage:25,pellets:1,spread:0,cooldown:260,speed:740,life:1.1,magazine:10,reload:1100,color:'#ffe066'},
+  heavy: {name:'Heavy Cannon',label:'H',damage:45,pellets:1,spread:0,cooldown:850,speed:680,life:1.2,magazine:5,reload:1700,color:'#ff986b'},
+  twin: {name:'Twin Cannon',label:'T',damage:16,pellets:2,spread:0,barrelSpacing:10,cooldown:420,speed:780,life:1.05,magazine:8,reload:1500,color:'#6bdcff'},
 };
-export const weaponPads = map => [[450,60,'shotgun'],[450,500,'rapid'],[60,170,'cannon']];
+export const weaponPads = map => [[450,60,'heavy'],[450,500,'twin'],[60,170,'cannon']];
 
 export function updateBoost(p, held, dt) {
   p.energy = Math.max(0,Math.min(100,p.energy ?? 100));

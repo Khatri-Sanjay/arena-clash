@@ -24,7 +24,7 @@ if (fs.existsSync(output) && fs.lstatSync(output).isSymbolicLink()) {
 }
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(path.join(output, 'shared'), { recursive: true });
-for (const asset of ['index.html', 'style.css', 'main.js', 'icons.svg']) {
+for (const asset of ['index.html', 'style.css', 'main.js', 'icons.svg', 'tank.svg']) {
   fs.copyFileSync(path.join(root, 'client', asset), path.join(output, asset));
 }
 fs.copyFileSync(path.join(root, 'shared/game.js'), path.join(output, 'shared/game.js'));

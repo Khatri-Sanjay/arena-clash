@@ -18,7 +18,7 @@ const endpoint = 'wss://example.com/socket?room=public';
 const result = build(endpoint);
 assert.equal(result.status, 0, result.stderr);
 const output = path.join(root, 'public');
-assert.deepEqual(fs.readdirSync(output).sort(), ['config.js', 'icons.svg', 'index.html', 'main.js', 'shared', 'style.css']);
+assert.deepEqual(fs.readdirSync(output).sort(), ['config.js', 'icons.svg', 'index.html', 'main.js', 'shared', 'style.css', 'tank.svg']);
 const context = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(output, 'config.js'), 'utf8'), context);
 assert.equal(context.window.CFG.wsUrl, endpoint);

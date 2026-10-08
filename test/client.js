@@ -39,7 +39,7 @@ const context=vm.createContext({C,MAPS,WEAPONS,weaponPads,updateBoost,BOOST_PADS
   innerWidth:800,innerHeight:500,devicePixelRatio:1,
   addEventListener(type,fn){handlers[type]=fn;},
 });
-vm.runInContext(fs.readFileSync('client/main.js','utf8').replace(/^import .*\n/,''),context);
+vm.runInContext(fs.readFileSync('client/main.js','utf8').replace(/^import .*\r?\n/,''),context);
 const $=id=>elements.get(id);
 assert.equal($('cdi').value,'TEST','invitation fills room code');
 assert.equal($('friends-panel').hidden,false);
@@ -65,21 +65,25 @@ ws.receive({t:'fx',x:500,y:280,kid:1,v:2,damage:25,a:0});
 assert.equal(vm.runInContext('hitLabels[0].damage',context),25,'server hit produces damage feedback');
 vm.runInContext('draw(1000)',context);
 assert.equal($('game').style.display,'block');
-for (const weapon of ['shotgun', 'rapid', 'cannon']) {
+for (const weapon of ['heavy', 'twin', 'cannon']) {
   vm.runInContext(`ents.get(1).weapon='${weapon}'; hudT=0; hud(1000)`, context);
   assert.equal($('weapon-symbol').getAttribute('href'), '/icons.svg#'+weapon, 'HUD icon follows weapon pickup');
   assert.equal($('weapon-hud').getAttribute('aria-label'), WEAPONS[weapon].name, 'weapon remains accessible');
 }
+ws.receive({t:'s',ph:'play',left:180000,p:[[1,450,280,0,100,1,0,0,0,0,0,'twin',8]],b:[[123,478,275,0,'twin',1]],supplies:[]});
+assert.equal(vm.runInContext('ents.get(1).fireUntil',context),1090,'new tank shell triggers turret recoil');
+vm.runInContext('pred.hullA=Math.PI/2; draw(1000)',context);
+assert.equal(vm.runInContext('pred.hullA',context),Math.PI/2,'drawing turret preserves independent hull direction');
 
-const pointer={pointerType:'touch',pointerId:1,offsetX:600,offsetY:300};
-$('cv').events.pointerdown(pointer);
+const pointer={pointerType:'touch',pointerId:1,offsetX:600,offsetY:300,stopPropagation(){}};
+$('aim-stick').events.pointerdown(pointer);
 assert.equal(vm.runInContext('readInput().f',context),false,'touch aim dead zone does not fire');
 $('cv').events.pointermove({...pointer,offsetX:630});
 assert.equal(vm.runInContext('readInput().f',context),true,'dragging aim fires');
 handlers.blur();
 assert.equal(vm.runInContext('readInput().f',context),false,'blur resets touch controls');
 $('separate-fire').checked=true;$('separate-fire').onchange();
-$('cv').events.pointerdown(pointer);
+$('aim-stick').events.pointerdown(pointer);
 $('cv').events.pointermove({...pointer,offsetX:630});
 assert.equal(vm.runInContext('readInput().f',context),false,'separate fire mode aims without firing');
 $('fire').events.pointerdown({preventDefault(){},pointerId:2});
@@ -148,8 +152,8 @@ for (const [width,height] of [[320,568],[390,844],[568,320],[667,375],[844,390],
   assert.ok(bounds.width>150 && bounds.height>90,`${width}x${height}: usable arena`);
   assert.ok(vm.runInContext('view.s',context)>=.75,'mobile camera keeps tanks readable');
   const player=vm.runInContext('({x:view.bounds.x+(pred.x-cam.x)*view.s,y:view.bounds.y+(pred.y-cam.y)*view.s})',context);
-  assert.equal(player.x,bounds.x+bounds.width/2,'tank centered horizontally, including at map edges');
-  assert.equal(player.y,bounds.y+bounds.height/2,'tank centered vertically');
+  assert.ok(Math.abs(player.x-bounds.x-bounds.width/2)<1e-8,'tank centered horizontally, including at map edges');
+  assert.ok(Math.abs(player.y-bounds.y-bounds.height/2)<1e-8,'tank centered vertically');
   const home=vm.runInContext('stickHome(true)',context), radius=vm.runInContext('stickSize()',context);
   assert.ok(width>height ? home.x+radius<bounds.x : home.y-radius>bounds.y+bounds.height,'movement stick sits outside arena');
 }
@@ -165,3 +169,29 @@ context.window.screen.orientation.lock=async()=>{throw new Error('Unsupported');
 await vm.runInContext('landscapeMode()',context);
 delete context.document.documentElement; delete context.window.screen;
 console.log('PASS clear arena, centered tank, control gutters, landscape request and unsupported-browser fallback');
+
+vm.runInContext("lastPh='play';paused=false;prefs.fire=false;resetInput();resize()",context);
+$('cv').events.pointerdown(pointer);
+assert.equal(vm.runInContext('sticks.R',context),null,'touching arena does not steer turret');
+$('move-stick').events.pointerdown({...pointer,pointerId:21,offsetX:60});
+$('aim-stick').events.pointerdown({...pointer,pointerId:22});
+$('cv').events.pointermove({...pointer,pointerId:21,offsetX:90});
+$('cv').events.pointermove({...pointer,pointerId:22,offsetX:630});
+const dual=vm.runInContext('readInput()',context);
+assert.ok(dual.mx>0 && dual.f,'movement and cannon fire work together');
+vm.runInContext('updateTouchPads()',context);
+assert.equal($('move-stick').getAttribute('data-active'),'true');
+assert.equal($('aim-stick').getAttribute('data-active'),'true');
+$('cv').events.pointercancel({...pointer,pointerId:22});
+assert.equal(vm.runInContext('readInput().f',context),false,'canceling aim releases fire while moving');
+assert.ok(vm.runInContext('readInput().mx',context)>0);
+vm.runInContext('prefs.left=true; resetInput(); resize()',context);
+assert.ok(parseFloat($('move-stick').style.left)>parseFloat($('aim-stick').style.left),'left-handed pads mirror');
+$('move-stick').events.pointerdown({...pointer,pointerId:23});
+assert.equal(vm.runInContext('sticks.L.id',context),23,'mirrored move pad retains movement role');
+vm.runInContext('resize();updateTouchPads()',context);
+assert.equal($('move-stick').getAttribute('data-active'),'false','rotation returns knob to neutral');
+vm.runInContext("on.kill({kid:2,vid:1,k:'Bot 3',v:'Tester',x:450,y:280})",context);
+vm.runInContext('hudT=0;hud(1000)',context);
+assert.ok($('feed').innerHTML.includes('feed-name'),'elimination names have bounded layout');
+console.log('PASS explicit joystick pads, simultaneous drive/fire, pointer cancel, handedness and bounded feed');
