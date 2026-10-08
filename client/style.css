@@ -1469,3 +1469,68 @@ body.game-paused #mobile-messages, body.game-paused #sb { visibility:hidden; }
   body.touch #health-value { font-size:9px; }
   body.touch #hp .health-label { gap:3px; }
 }
+
+/* The canvas camera reserves these gutters for HUD and thumb controls. */
+body.touch { --action-center:50%; }
+body.touch.separate-fire { --action-center:calc(50% - 25px); }
+body.touch #dash, body.touch #reload, body.touch #boost,
+body.touch.left-handed #dash, body.touch.left-handed #reload, body.touch.left-handed #boost {
+  bottom:calc(8px + var(--sb));
+  right:auto;
+  border-radius:10px;
+}
+body.touch #boost, body.touch.left-handed #boost { left:calc(var(--action-center) - 72px); }
+body.touch #reload, body.touch.left-handed #reload { left:calc(var(--action-center) - 22px); }
+body.touch #dash, body.touch.left-handed #dash { left:calc(var(--action-center) + 28px); }
+body.touch #fire, body.touch.left-handed #fire {
+  left:calc(var(--action-center) + 78px);
+  right:auto;
+  bottom:calc(8px + var(--sb));
+  width:44px;
+  height:44px;
+  min-height:44px;
+  border-radius:10px;
+  transform:none;
+}
+body.touch #boost-meter { bottom:calc(62px + var(--sb)); width:80px; }
+body.touch #respawn { top:48%; font-size:18px; }
+body.touch #sb {
+  top:calc(68px + var(--st));
+  right:calc(12px + var(--sr));
+  width:min(155px,calc((100% - var(--sl) - var(--sr) - 36px) / 2));
+  min-width:0;
+  max-height:60px;
+  padding:6px 8px;
+}
+body.touch #sb > div { overflow-wrap:anywhere; }
+body.touch.scores-open #weapon-hud { visibility:hidden; }
+#landscape-mode { display:none; }
+body.touch #landscape-mode { display:block; }
+body.touch #rot { display:block; bottom:calc(158px + var(--sb)); font-size:9px; }
+@media (orientation:landscape) {
+  body.touch #rot { display:none; }
+  body.touch #hp, body.touch.left-handed #hp { top:calc(8px + var(--st)); left:calc(70px + var(--sl)); width:125px; }
+  body.touch #weapon-hud, body.touch #sb { top:calc(8px + var(--st)); right:calc(70px + var(--sr)); width:125px; }
+  body.touch #connection { top:calc(50px + var(--st)); }
+  body.touch #personal-score { top:calc(66px + var(--st)); }
+  body.touch #mobile-messages {
+    top:auto;
+    bottom:calc(64px + var(--sb));
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    width:min(280px,36vw);
+  }
+  body.touch #boost-meter { bottom:auto; top:calc(44px + var(--st)); left:50%; width:65px; }
+  body.touch #boost-meter > .ui-icon { display:none; }
+  body.touch #boost-meter .dash-meter { margin:0; }
+  body.touch #respawn { top:45%; }
+}
+@media (orientation:landscape) and (max-width:620px) {
+  body.touch #hp, body.touch.left-handed #hp, body.touch #weapon-hud, body.touch #sb { width:90px; }
+}
+@media (orientation:landscape) {
+  body.touch #tm { top:calc(8px + var(--st)); font-size:16px; line-height:20px; padding:4px 10px; }
+  body.touch #mobile-messages { top:calc(38px + var(--st)); bottom:auto; }
+  body.touch.has-message #connection, body.touch.has-message #personal-score, body.touch.has-message #boost-meter { visibility:hidden; }
+}

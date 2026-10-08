@@ -140,3 +140,28 @@ assert.equal($('ps').style.display,'flex');
 vm.runInContext('setPause(false)',context);
 assert.equal($('ps').style.display,'none');
 console.log('PASS popup priority, dismissible tutorial, scoreboard dismissal and pause resume');
+
+for (const [width,height] of [[320,568],[390,844],[568,320],[667,375],[844,390],[1024,768]]) {
+  $('cv').clientWidth=width; $('cv').clientHeight=height;
+  vm.runInContext('touch=true; prefs.size=90; safeInsets={left:20,right:20,top:24,bottom:34}; resize(); pred.init=true; pred.x=20; pred.y=20; draw(1000)',context);
+  const bounds=vm.runInContext('view.bounds',context);
+  assert.ok(bounds.width>150 && bounds.height>90,`${width}x${height}: usable arena`);
+  assert.ok(vm.runInContext('view.s',context)>=.75,'mobile camera keeps tanks readable');
+  const player=vm.runInContext('({x:view.bounds.x+(pred.x-cam.x)*view.s,y:view.bounds.y+(pred.y-cam.y)*view.s})',context);
+  assert.equal(player.x,bounds.x+bounds.width/2,'tank centered horizontally, including at map edges');
+  assert.equal(player.y,bounds.y+bounds.height/2,'tank centered vertically');
+  const home=vm.runInContext('stickHome(true)',context), radius=vm.runInContext('stickSize()',context);
+  assert.ok(width>height ? home.x+radius<bounds.x : home.y-radius>bounds.y+bounds.height,'movement stick sits outside arena');
+}
+let fullscreens=0, locks=0, unlocks=0;
+context.document.documentElement={async requestFullscreen(){fullscreens++;document.fullscreenElement=true;}};
+context.document.exitFullscreen=async()=>{document.fullscreenElement=false;};
+context.window.screen={orientation:{async lock(value){assert.equal(value,'landscape');locks++;},unlock(){unlocks++;}}};
+await vm.runInContext('landscapeMode()',context);
+assert.equal(fullscreens,1); assert.equal(locks,1);
+vm.runInContext('releaseLandscape()',context);
+assert.equal(unlocks,1); assert.equal(document.fullscreenElement,false);
+context.window.screen.orientation.lock=async()=>{throw new Error('Unsupported');};
+await vm.runInContext('landscapeMode()',context);
+delete context.document.documentElement; delete context.window.screen;
+console.log('PASS clear arena, centered tank, control gutters, landscape request and unsupported-browser fallback');

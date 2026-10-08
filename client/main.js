@@ -4,9 +4,29 @@ const wsUrl = (window.CFG && window.CFG.wsUrl) || ((location.protocol === 'https
 let touch = matchMedia('(pointer:coarse)').matches;
 const prefs = (() => { try { return JSON.parse(localStorage.getItem('ac_controls')) || {}; } catch { return {}; } })();
 function updateControls(type) {
+  const wasTouch = touch;
   touch = prefs.mode === 'touch' || (prefs.mode !== 'mouse' && (type ? type !== 'mouse' : matchMedia('(pointer:coarse)').matches));
   document.body.classList.toggle('touch',touch); document.body.classList.toggle('left-handed',!!prefs.left);
+  document.body.classList.toggle('separate-fire',!!prefs.fire);
   $('fire').hidden = !touch || !prefs.fire;
+  if (wasTouch !== touch) setTimeout(resize,0);
+}
+
+let mobileFullscreen = false;
+async function landscapeMode() {
+  if (!touch) return;
+  try {
+    if (!document.fullscreenElement && document.documentElement?.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+      mobileFullscreen = true;
+    }
+    await window.screen?.orientation?.lock?.('landscape');
+  } catch { /* Portrait remains playable when the browser refuses orientation locking. */ }
+}
+function releaseLandscape() {
+  try { window.screen?.orientation?.unlock?.(); } catch {}
+  if (mobileFullscreen && document.fullscreenElement) document.exitFullscreen?.()?.catch?.(()=>{});
+  mobileFullscreen = false;
 }
 
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -57,6 +77,7 @@ function connect() {
 }
 function join(room, restore=false) {
   if(busy || !validName())return;
+  void landscapeMode();
   try { AC=AC || new(window.AudioContext || window.webkitAudioContext)(); AC.resume(); }catch{}
   clearTimeout(reconnectTimer);clearTimeout(joinTimer);
   const old=ws; ws=null; if(old)old.close();
@@ -68,6 +89,7 @@ function resetInput() {
   send({t:'in',mx:0,my:0,a:aimA,f:false,d:dashN});
 }
 function leave() {
+  releaseLandscape();
   leaving=true;joined=false;clearTimeout(reconnectTimer);clearTimeout(joinTimer); resetInput();send({t:'leave'});
   const old=ws;ws=null;if(old)old.close();store.set('tok','');store.set('room','');tok='';updateRejoin();busyUI(false);
   R={ps:[],ph:'lobby',host:0,res:null};ents.clear();bul=[];snap=null;pred.init=false;lastPh='lobby';paused=false;teaching=false;practice=false;
@@ -162,7 +184,7 @@ updateControls();updateRejoin();
 $('jn').onclick = () => { practice=false;teaching=false; const c = $('cdi').value.trim().toUpperCase(); if (!/^[A-Z0-9]{4}$/.test(c)) return err('Room code must be 4 characters'); join(c); };
 $('cdi').onkeydown = $('nm').onkeydown = e => { if (e.key === 'Enter') ($('cdi').value ? $('jn') : $('mk')).click(); };
 $('rd').onclick = () => { const m = R.ps.find(p => p.id === me); send({ t: 'ready', v: !(m && m.r) }); };
-$('st').onclick = () => send({ t: 'start' });
+$('st').onclick = () => { void landscapeMode(); send({ t: 'start' }); };
 $('back-lobby').onclick=()=>send({t:'again'});
 $('ag').onclick=()=>send({t:'rematch',v:!R.ps.find(p=>p.id===me)?.r});
 $('lv').onclick = $('ql').onclick = $('ql2').onclick = leave;
@@ -170,6 +192,7 @@ $('cp').onclick = async () => { try { await navigator.clipboard.writeText(code);
 $('share-room').onclick=async()=>{ const url=invitation(); try{if(navigator.share){await navigator.share({title:'Join my Arena Clash room',text:'Room '+code,url});$('invite-status').textContent='Invitation shared';}else{await navigator.clipboard.writeText(url);$('invite-status').textContent='Invitation link copied';}}catch(e){$('invite-status').textContent=e.name==='AbortError'?'':'Select and copy the invitation link below.';} };
 $('reload').onclick=()=>send({t:'reload'});
 $('pb').onclick = () => setPause(true); $('rs').onclick = () => setPause(false);
+$('landscape-mode').onclick = () => { void landscapeMode(); };
 $('volume').value=prefs.volume ?? 70;$('vibration').checked=!!prefs.vibration;$('graphics').value=prefs.graphics || 'high';
 for(const id of ['volume','vibration','graphics'])$(id).onchange=()=>{prefs.volume=Number($('volume').value);prefs.vibration=$('vibration').checked;prefs.graphics=$('graphics').value;try{localStorage.setItem('ac_controls',JSON.stringify(prefs));}catch{}resize();};
 $('score-toggle').onclick=()=>{const expanded=$('score-toggle').getAttribute('aria-expanded')!=='true';$('score-toggle').setAttribute('aria-expanded',String(expanded));document.body.classList.toggle('scores-open',expanded);};
@@ -201,12 +224,12 @@ cv.addEventListener('pointerdown', e => {
   if (paused || lastPh!=='play') return; updateControls(e.pointerType); cv.setPointerCapture(e.pointerId);
   if (e.pointerType === 'mouse') { if (e.button === 0) mouseDown = true; mouse = { x: e.offsetX, y: e.offsetY }; return; }
   const left = e.offsetX < cv.clientWidth / 2; const side = (prefs.left ? !left : left) ? 'L' : 'R'; if (sticks[side]) return;
-  const origin = stickOrigin(e.offsetX, e.offsetY);
-  sticks[side] = { id: e.pointerId, ox: origin.x, oy: origin.y, x: origin.x, y: origin.y }; pid[e.pointerId] = side;
+  const origin = stickHome(prefs.left ? side === 'R' : side === 'L');
+  sticks[side] = { id: e.pointerId, ox: origin.x, oy: origin.y, px:e.offsetX, py:e.offsetY, x: origin.x, y: origin.y }; pid[e.pointerId] = side;
 });
 cv.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') { updateControls('mouse'); mouse = { x: e.offsetX, y: e.offsetY }; return; }
-  const s = sticks[pid[e.pointerId]]; if (s) { s.x = e.offsetX; s.y = e.offsetY; }
+  const s = sticks[pid[e.pointerId]]; if (s) { s.x = s.ox+e.offsetX-s.px; s.y = s.oy+e.offsetY-s.py; }
 });
 const up = e => { if (e.pointerType === 'mouse') { mouseDown = false; return; } const side = pid[e.pointerId]; if (side) { sticks[side] = null; delete pid[e.pointerId]; } };
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
@@ -216,7 +239,12 @@ $('boost').addEventListener('pointerdown',e=>{if(paused || lastPh!=='play')retur
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('boost').addEventListener(type,()=>boostHeld=false);
 $('dash').addEventListener('pointerdown', e => { e.stopPropagation(); dash(); });
 function dash() { if (paused || lastPh !== 'play' || !pred.al) return; if (tryDash(pred, performance.now())) { dashN = (dashN + 1) % 1000; snd(150, .15, 'sawtooth', .05, 500); } else return; }
-const stickSize = () => Math.min(Number(prefs.size) || 55, Math.max(30, (view.w - safeInsets.left - safeInsets.right) * .18), Math.max(30, (view.h - safeInsets.top - safeInsets.bottom) * .16));
+const stickSize = () => Math.min(Number(prefs.size) || 55, view.w>view.h ? 55 : 50, Math.max(30, (view.w - safeInsets.left - safeInsets.right) * .18), Math.max(30, (view.h - safeInsets.top - safeInsets.bottom) * .16));
+function stickHome(left) {
+  const r = stickSize();
+  const landscape = view.w > view.h;
+  return stickOrigin(landscape ? (left ? safeInsets.left+r+12 : view.w-safeInsets.right-r-12) : view.w*(left ? .2 : .8), view.h-safeInsets.bottom-r-72);
+}
 function stickOrigin(x, y) {
   const r = stickSize() + 8;
   return { x: Math.max(safeInsets.left + r, Math.min(view.w - safeInsets.right - r, x)),
@@ -228,24 +256,34 @@ function readInput() {
   let mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), my = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0), f = mouseDown || fireHeld;
   const [lx, ly] = vec(sticks.L), [rx, ry, rl] = vec(sticks.R); mx += lx; my += ly;
   if (sticks.R) { f = fireHeld || (!prefs.fire && rl > 12); if (rl > 12) aimA = Math.atan2(ry, rx); }
-  else if (!touch || mouse.x) { const px = (pred.x - cam.x) * view.s, py = (pred.y - cam.y) * view.s; if (mouseDown || !touch) aimA = Math.atan2(mouse.y - py, mouse.x - px); }
+  else if (!touch || mouse.x) { const px = (view.bounds?.x || 0)+(pred.x - cam.x) * view.s, py = (view.bounds?.y || 0)+(pred.y - cam.y) * view.s; if (mouseDown || !touch) aimA = Math.atan2(mouse.y - py, mouse.x - px); }
   return { mx: Math.max(-1, Math.min(1, mx)), my: Math.max(-1, Math.min(1, my)), a: aimA, f, boost:boostHeld || !!keys.shift };
 }
 let lastSent = 0;
 
-/* ---------- viewport / camera: equal visible AREA on every screen => fair on any monitor ---------- */
+/* ---------- viewport / camera: keep mobile tanks readable inside the clear arena ---------- */
 const AREA = 640 * 400;
 let safeInsets = {left:0, right:0, top:0, bottom:0};
+function arenaBounds(w,h) {
+  if (!touch) return {x:0,y:0,width:w,height:h};
+  const landscape=w>h, {left,right,top,bottom}=safeInsets;
+  const rail=landscape ? stickSize()*2+24 : 0;
+  const x=left+rail, y=top+(landscape ? 88 : 190);
+  return {x,y,width:Math.max(1,w-x-right-rail),height:Math.max(1,h-y-bottom-(landscape ? 64 : 180))};
+}
 function resize() {
   const w = cv.clientWidth || innerWidth, h = cv.clientHeight || innerHeight, dpr = Math.min(devicePixelRatio || 1, prefs.graphics==='low'?1:2);
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-  const ar = w / h; let vw = Math.sqrt(AREA * ar), vh = vw / ar;
-  if (vw > C.W) { vw = C.W; vh = vw / ar; } if (vh > C.H) { vh = C.H; vw = vh * ar; }
-  view = { s: w / vw, vw, vh, dpr, w, h };
+  view.w=w; view.h=h;
   if (typeof getComputedStyle === 'function') {
     const style = getComputedStyle($('game'));
     safeInsets = Object.fromEntries(['left','right','top','bottom'].map(side => [side, parseFloat(style.getPropertyValue('padding-' + side)) || 0]));
   }
+  const bounds=arenaBounds(w,h), ar=bounds.width/bounds.height;
+  const area=touch ? Math.min(AREA,bounds.width*bounds.height/(.75*.75)) : AREA;
+  let vw=Math.sqrt(area*ar), vh=vw/ar;
+  if(vw>C.W){vw=C.W;vh=vw/ar;} if(vh>C.H){vh=C.H;vw=vh*ar;}
+  view={s:bounds.width/vw,vw,vh,dpr,w,h,bounds,touch};
   resetInput();
 }
 new ResizeObserver(resize).observe(cv); addEventListener('resize', resize, opt); addEventListener('orientationchange', () => setTimeout(resize, 250), opt);
@@ -272,7 +310,7 @@ function frame(t) {
   shake *= .88; flash *= .9; const me_ = ents.get(me); dispHp += ((me_ ? me_.hp : 100) - dispHp) * .2;
   if(play && now-pingAt>2000 && ws?.readyState===1){pingAt=now;send({t:'ping',at:now});}
   if(teaching && play && !paused){
-    const tasks=touch ? ['Drag the MOVE stick to drive.','Drag AIM / FIRE to aim'+(prefs.fire ? ', then hold Fire.' : ' and shoot.'),'Tap the dash button for a quick escape.'] : ['Move your tank using WASD.','Aim with the mouse and click to fire.','Press Space to dash.'];
+    const tasks=touch ? ['Drag MOVE to drive.',prefs.fire ? 'Drag AIM, then hold Fire.' : 'Drag AIM / FIRE to shoot.','Tap Dash to escape.'] : ['Move your tank using WASD.','Aim with the mouse and click to fire.','Press Space to dash.'];
     if(lessonStep===0 && Math.hypot(inp.mx,inp.my)>.2)lessonProgress+=dt;
     if(lessonStep===1 && inp.f)lessonProgress+=dt;
     if(lessonStep===2 && now<pred.dU)lessonProgress=2;
@@ -298,11 +336,14 @@ function tank(x, y, a, c, hp, al, n, you, t, sh) {
 }
 function draw(t) {
   const { s, vw, vh, dpr, w, h } = view; cx.setTransform(1, 0, 0, 1, 0, 0); cx.fillStyle = '#05060d'; cx.fillRect(0, 0, cv.width, cv.height);
+  const bounds=view.bounds || {x:0,y:0,width:w,height:h};
   const tx = pred.init ? pred.x : C.W / 2, ty = pred.init ? pred.y : C.H / 2;
   const cxT = vw >= C.W ? (C.W - vw) / 2 : Math.max(0, Math.min(C.W - vw, tx - vw / 2)), cyT = vh >= C.H ? (C.H - vh) / 2 : Math.max(0, Math.min(C.H - vh, ty - vh / 2));
-  cam.x += (cxT - cam.x) * .2; cam.y += (cyT - cam.y) * .2;
+  if(touch){cam.x=tx-vw/2;cam.y=ty-vh/2;}
+  else {cam.x += (cxT - cam.x) * .2; cam.y += (cyT - cam.y) * .2;}
   const sx = shake > .5 ? (Math.random() - .5) * shake : 0, sy = shake > .5 ? (Math.random() - .5) * shake : 0;
-  cx.setTransform(s * dpr, 0, 0, s * dpr, (-cam.x * s + sx) * dpr, (-cam.y * s + sy) * dpr);
+  cx.save(); cx.setTransform(dpr,0,0,dpr,0,0); cx.beginPath(); cx.rect(bounds.x,bounds.y,bounds.width,bounds.height); cx.clip();
+  cx.setTransform(s * dpr, 0, 0, s * dpr, (bounds.x-cam.x * s + sx) * dpr, (bounds.y-cam.y * s + sy) * dpr);
   cx.fillStyle = '#101e2b'; cx.fillRect(0, 0, C.W, C.H); cx.strokeStyle = '#ffffff0d'; cx.lineWidth = 1; cx.beginPath();
   for (let i = 0; i <= C.W; i += 50) { cx.moveTo(i, 0); cx.lineTo(i, C.H); } for (let i = 0; i <= C.H; i += 50) { cx.moveTo(0, i); cx.lineTo(C.W, i); } cx.stroke();
   cx.strokeStyle = arena.color; cx.lineWidth = 4; cx.strokeRect(2, 2, C.W - 4, C.H - 4);
@@ -323,17 +364,17 @@ function draw(t) {
   if(m?.al && (pred.boost || t<pred.dU) && !RM){cx.strokeStyle='#8aeeab66';cx.lineWidth=7;cx.beginPath();cx.moveTo(pred.x-Math.cos(pred.a)*35,pred.y-Math.sin(pred.a)*35);cx.lineTo(pred.x-Math.cos(pred.a)*18,pred.y-Math.sin(pred.a)*18);cx.stroke();}
   for (const p of pool) if (p.l > 0) { cx.globalAlpha = Math.min(1, p.l * 1.6); cx.fillStyle = p.c; cx.beginPath(); cx.arc(p.x, p.y, p.s, 0, 7); cx.fill(); } cx.globalAlpha = 1;
   for(let i=hitLabels.length-1;i>=0;i--){const label=hitLabels[i];if(t>=label.until){hitLabels.splice(i,1);continue;}cx.globalAlpha=Math.min(1,(label.until-t)/250);cx.fillStyle='#ffe066';cx.font='bold 15px system-ui';cx.textAlign='center';cx.fillText('-'+label.damage,label.x,label.y-20-(650-(label.until-t))/35);}cx.globalAlpha=1;
-  cx.setTransform(dpr, 0, 0, dpr, 0, 0); // screen-space overlays
+  cx.restore(); cx.setTransform(dpr, 0, 0, dpr, 0, 0); // screen-space overlays
   if(lastPh==='play' && m?.al && !paused){
-    const x=touch?(pred.x+Math.cos(aimA)*100-cam.x)*s:mouse.x;
-    const y=touch?(pred.y+Math.sin(aimA)*100-cam.y)*s:mouse.y;
+    const x=touch?bounds.x+(pred.x+Math.cos(aimA)*100-cam.x)*s:mouse.x;
+    const y=touch?bounds.y+(pred.y+Math.sin(aimA)*100-cam.y)*s:mouse.y;
     cx.strokeStyle=t<hitUntil?'#ffe066':'#ffffffbb';cx.lineWidth=1.5;cx.beginPath();
     for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){cx.moveTo(x+dx*6,y+dy*6);cx.lineTo(x+dx*13,y+dy*13);}cx.stroke();
     if(t<hitUntil){cx.beginPath();for(const [dx,dy] of [[1,1],[-1,1],[1,-1],[-1,-1]]){cx.moveTo(x+dx*4,y+dy*4);cx.lineTo(x+dx*9,y+dy*9);}cx.stroke();}
-    if(t<damageUntil){const x=(pred.x-cam.x)*s,y=(pred.y-cam.y)*s;cx.strokeStyle='#ff657c';cx.lineWidth=4;cx.beginPath();cx.arc(x,y,48,damageAngle-.35,damageAngle+.35);cx.stroke();}
+    if(t<damageUntil){const x=bounds.x+(pred.x-cam.x)*s,y=bounds.y+(pred.y-cam.y)*s;cx.strokeStyle='#ff657c';cx.lineWidth=4;cx.beginPath();cx.arc(x,y,48,damageAngle-.35,damageAngle+.35);cx.stroke();}
   }
   if (flash > .03) { const g = cx.createRadialGradient(w / 2, h / 2, Math.min(w, h) / 3, w / 2, h / 2, Math.max(w, h) * .7); g.addColorStop(0, '#ff284600'); g.addColorStop(1, `rgba(255,40,70,${flash * .55})`); cx.fillStyle = g; cx.fillRect(0, 0, w, h); }
-  if(touch && !paused){for(const k of ['L','R']){const active=sticks[k];const left=prefs.left ? k==='R' : k==='L';const home=stickOrigin(w*(left ? 0.2 : 0.8),h-safeInsets.bottom-stickSize()-40);const st=active || {ox:home.x,oy:home.y};const [vx,vy]=active?vec(active):[0,0];cx.strokeStyle=active?'#ffffff88':'#ffffff35';cx.lineWidth=2;cx.beginPath();cx.arc(st.ox,st.oy,stickSize(),0,Math.PI*2);cx.stroke();cx.fillStyle=k==='R'?'#ff6d8b55':'#8aeeab44';cx.beginPath();cx.arc(st.ox+vx*stickSize(),st.oy+vy*stickSize(),22,0,Math.PI*2);cx.fill();if(!active){cx.fillStyle='#ffffff99';cx.font='10px system-ui';cx.textAlign='center';cx.fillText(k==='L'?'MOVE':'AIM / FIRE',st.ox,st.oy+stickSize()+16);}}}
+  if(touch && !paused){for(const k of ['L','R']){const active=sticks[k];const left=prefs.left ? k==='R' : k==='L';const home=stickHome(left);const st=active || {ox:home.x,oy:home.y};const [vx,vy]=active?vec(active):[0,0];cx.strokeStyle=active?'#ffffff88':'#ffffff35';cx.lineWidth=2;cx.beginPath();cx.arc(st.ox,st.oy,stickSize(),0,Math.PI*2);cx.stroke();cx.fillStyle=k==='R'?'#ff6d8b55':'#8aeeab44';cx.beginPath();cx.arc(st.ox+vx*stickSize(),st.oy+vy*stickSize(),22,0,Math.PI*2);cx.fill();if(!active){cx.fillStyle='#ffffff99';cx.font='10px system-ui';cx.textAlign='center';cx.fillText(k==='L'?'MOVE':'AIM / FIRE',st.ox,st.oy+stickSize()+16);}}}
 
 }
 function hud(t) {
@@ -365,6 +406,7 @@ function hud(t) {
   const reconnecting = $('ban').style.display === 'block';
   $('notice').textContent = !reconnecting && t<noticeUntil ? noticeText : '';
   $('tutorial-tip').hidden = !teaching || paused || lastPh !== 'play' || reconnecting || t<noticeUntil;
+  document.body.classList.toggle('has-message',reconnecting || t<noticeUntil || !$('tutorial-tip').hidden);
   $('respawn').textContent = m && !m.al && lastPh==='play' ? 'BACK IN '+Math.max(1,Math.ceil(((m.respawnMs||0)-(performance.now()-snapT))/1000))+'s' : '';
   $('bf').textContent = m && m.sh ? '🛡 Shield' : '';
 }
